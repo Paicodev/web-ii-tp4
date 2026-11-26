@@ -93,8 +93,8 @@ Si además se quiere forzar un escenario de timeout, basta con configurar un `CA
 - **Motivo:** evita confusión en la lista de conectados y hace inequívoco quién propuso cada producto y quién votó.
 
 ### Productos repetidos
-- Si un producto ya está en la lista (mismo `productId` del catálogo), no se duplica y se informa el motivo `ALREADY_EXISTS` únicamente al participante que lo propuso.
-- Si dos participantes proponen el mismo producto al mismo tiempo mientras el catálogo responde, la verificación e inserción final se realizan de forma sincrónica sin `await` en el medio: entra uno solo y el segundo recibe `ALREADY_EXISTS`.
+- Si un producto ya está en la lista (mismo `productoId` del catálogo), no se duplica y se informa el código `YA_EN_LISTA` únicamente al participante que lo propuso.
+- Si dos participantes proponen el mismo producto al mismo tiempo mientras el catálogo responde, la verificación e inserción final se realizan de forma sincrónica sin `await` en el medio: entra uno solo y el segundo recibe `YA_EN_LISTA`.
 
 ### Quién puede quitar productos
 - Puede quitar un producto **quien lo propuso**, o **cualquier participante conectado si quien lo propuso ya se desconectó**.
@@ -109,7 +109,57 @@ Si además se quiere forzar un escenario de timeout, basta con configurar un `CA
 
 ## Contrato de mensajes (WebSocket y SSE)
 
-> _En construcción — se completará en los Pasos 2 y 4._
+Todos los mensajes de WebSocket viajan en **JSON** con un campo discriminador `tipo`, definidos mediante uniones discriminadas de TypeScript en [`src/contrato.ts`](./src/contrato.ts) y validados en tiempo de ejecución en el servidor antes de ejecutarse.
+
+### Mensajes WebSocket (Participantes ↔ Servidor)
+
+| Dirección | `tipo` | Campos | Cuándo se envía |
+|---|---|---|---|
+| Cliente → Servidor | `unirse` | `nombre: string` | Al abrir la conexión, para identificarse y entrar a la lista. |
+| Cliente → Servidor | `proponer` | `productoIds: number[]` | Cuando un participante propone entre 1 y 10 productos del catálogo por su ID entero positivo. |
+| Cliente → Servidor | `votar` | `productoId: number` | Cuando un participante vota un producto de la lista (una sola vez por producto). |
+| Cliente → Servidor | `quitar_voto` | `productoId: number` | Cuando un participante retira su voto de un producto. |
+| Cliente → Servidor | `quitar_producto` | `productoId: number` | Cuando el autor del producto (o cualquiera si el autor se desconectó) pide quitarlo de la lista. |
+| Servidor → Cliente | `estado_inicial` | `yo: string`, `productos: ProductoEnLista[]`, `participantes: string[]` | Apenas se acepta `unirse`: entrega al recién llegado el estado completo actual sin esperar cambios. |
+| Servidor → Todos | `participantes` | `nombres: string[]` | Cada vez que un participante entra o cierra su conexión. |
+| Servidor → Todos | `lista_actualizada` | `productos: ProductoEnLista[]` | Cada vez que cambia la lista (se agregan productos válidos, cambia un voto o se quita un producto). Siempre ordenada por `cantidadVotos` descendente. |
+| Servidor → Cliente | `resultado_propuesta` | `agregados: ProductoEnLista[]`, `fallidos: FalloPropuesta[]` | Solo a quien envió `proponer`, al terminar de resolver todos los IDs de la propuesta. |
+| Servidor → Cliente | `error` | `motivo: string` | Solo a quien envió un mensaje inválido (no es JSON, tipo desconocido, campos fuera de rango o acción no permitida). Nunca cierra el servidor ni avisa al resto. |
+
+#### Estructura de `ProductoEnLista` y `FalloPropuesta`
+
+```json
+{
+  "id": 1,
+  "titulo": "Essence Mascara Lash Princess",
+  "precio": 9.99,
+  "imagen": "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp",
+  "propuestoPor": "Ana",
+  "votos": ["Ana", "Bruno"],
+  "cantidadVotos": 2
+}
+```
+
+```json
+{
+  "productoId": 99999,
+  "codigo": "NO_EXISTE",
+  "motivo": "El producto #99999 no existe en el catálogo"
+}
+```
+
+Códigos posibles en `fallidos[].codigo`: `NO_EXISTE`, `TIMEOUT`, `YA_EN_LISTA`, `CATALOGO_NO_DISPONIBLE`.
+
+### Eventos Server-Sent Events (Servidor → Pantalla)
+
+La pantalla se conecta a `GET /eventos` con `EventSource` (`Content-Type: text/event-stream`). Cada evento incluye `event`, `id` incremental y `data` en JSON:
+
+| Evento (`event`) | Campos en `data` | Cuándo se envía |
+|---|---|---|
+| `estado` | `ranking: ProductoRanking[]`, `cantidadParticipantes: number` | Inmediatamente al abrir (o reconectar) la conexión SSE, para evitar mostrar una pantalla vacía. |
+| `actualizacion` | `ranking: ProductoRanking[]`, `cantidadParticipantes: number` | Cada vez que cambia la lista de productos, los votos o la cantidad de participantes conectados. |
+
+Además, el servidor envía comentarios periódicos (`: keep-alive`) para evitar que proxies intermedios cierren la conexión por inactividad.
 
 ## Comportamiento ante fallos o demoras del catálogo
 
