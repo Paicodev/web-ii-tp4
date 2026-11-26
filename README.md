@@ -194,6 +194,51 @@ Si la pantalla hiciera *short polling* (por ejemplo un `GET /ranking` cada pocos
 - **Tráfico y carga innecesarios:** enviaría solicitudes HTTP repetidas incluso cuando nadie está votando ni proponiendo nada (mayor overhead de encabezados y conexiones).
 - **A cambio**, no mantendría una conexión HTTP abierta por pantalla, algo que solo tiene sentido cuando las novedades son muy poco frecuentes y una demora de varios segundos resulta aceptable. En un ranking en vivo compartido, SSE entrega actualizaciones inmediatas con mínimo consumo y reconexión automática.
 
+## Opcionales implementados
+
+- **Detección de conexiones muertas (`ping`/`pong`):** el servidor mantiene un `WeakSet` de sockets activos y envía `ping` cada `WS_HEARTBEAT_MS` (por defecto `30000 ms`). Si un cliente no responde `pong` antes del siguiente ciclo, se termina la conexión (`socket.terminate()`), lo que dispara `close` y actualiza a los demás participantes y a la pantalla.
+- **Pruebas automatizadas con `node:test`:** suite de 16 pruebas en [`tests/`](./tests) cubriendo validación de mensajes, reglas de negocio en memoria, consultas concurrentes con fallos parciales/carreras, sincronización WebSocket + SSE sin bloqueos y heartbeat `ping`/`pong` (`npm test`).
+
+---
+
 ## Evidencia y pruebas
 
-> _Espacio reservado para capturas y video/GIF de pruebas (3 participantes + pantalla sincronizados, propuesta con fallos parciales, catálogo lento y respuesta a mensaje inválido)._
+### Demo en vivo: 3 participantes y pantalla sincronizados
+
+Participantes entrando en momentos distintos (2 inicialmente y 1 tarde recibiendo el estado completo), proponiendo productos, votando y sincronizando en tiempo real con la pantalla SSE (`/pantalla`):
+
+![Demo sincronización de 3 participantes y pantalla](./docs/evidencia/demo.gif)
+
+### Propuesta con fallos parciales
+
+Al proponer un producto inexistente (`#99999`), el error (`NO_EXISTE`) se muestra **únicamente** en la ventana de quien hizo la propuesta (`Ana`), mientras el otro participante (`Bruno`) solo ve los productos válidos sin recibir errores ajenos:
+
+![Propuesta con fallos parciales](./docs/evidencia/05%20-%20Fallos%20Parciales.png)
+
+### Comportamiento con el catálogo lento (`CATALOG_DELAY_MS`)
+
+Con demora configurada en el catálogo externo sin modificar el código, los participantes pueden tener propuestas en curso simultáneamente (`Consultando catálogo...`) sin bloquear el Event Loop ni las interacciones del resto:
+
+![Comportamiento con catálogo lento](./docs/evidencia/06%20-%20Cat%C3%A1logo%20lento.png)
+
+### Respuesta a un mensaje inválido desde la consola del navegador
+
+Enviando `'esto no es JSON'` directamente por WebSocket desde DevTools, el servidor responde `{"tipo":"error","motivo":"El mensaje debe ser un JSON válido"}` solo al emisor y sigue operando normalmente para los mensajes válidos siguientes (`unirse` y `proponer`):
+
+![Respuesta a mensaje inválido en consola](./docs/evidencia/03%20-%20Prueba%20de%20Evento%20con%20Health.png)
+
+### Verificación de endpoints base (`/health` y stream SSE `/eventos`)
+
+<details>
+<summary>Ver capturas adicionales de <code>/health</code> y el stream SSE crudo <code>/eventos</code></summary>
+
+- **Estado y configuración (`/health`):**
+  ![Endpoint health](./docs/evidencia/01%20-%20Health.png)
+
+- **Conexión inicial SSE (`/eventos`) recibiendo <code>event: estado</code>:**
+  ![Stream SSE inicial](./docs/evidencia/02%20-%20Eventos.png)
+
+- **Actualizaciones SSE en vivo tras eventos WebSocket:**
+  ![Stream SSE actualizado](./docs/evidencia/04%20-%20Resultado%20de%20prueba%20en%20Eventos.png)
+
+</details>
