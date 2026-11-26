@@ -163,7 +163,16 @@ Además, el servidor envía comentarios periódicos (`: keep-alive`) para evitar
 
 ## Comportamiento ante fallos o demoras del catálogo
 
-> _En construcción — se completará en el Paso 3._
+Toda consulta al catálogo externo (DummyJSON) se ejecuta mediante `fetch` con `AbortSignal.timeout(CATALOG_TIMEOUT_MS)` y en **simultáneo** mediante `Promise.allSettled` (nunca secuencial con `for...of` ni con `forEach(async)`).
+
+### Qué ve cada tipo de usuario
+
+| Escenario | Quien hizo la propuesta | Los demás participantes | La pantalla (SSE) |
+|---|---|---|---|
+| **El catálogo tarda** (ej. `?delay=3000`) | Espera el mensaje `resultado_propuesta` mientras la UI indica que su propuesta está en curso. Puede seguir viendo cambios de otros en vivo. | No sufren ningún bloqueo: siguen votando, quitando y proponiendo con normalidad porque el `await` libera el Event Loop de Node. | Sigue recibiendo y mostrando cualquier cambio de votos o participantes al instante. |
+| **Fallo parcial** (ej. IDs `[1, 99999, 2]`) | Recibe `resultado_propuesta` con los productos válidos en `agregados` y el detalle de cada fallo en `fallidos` (`NO_EXISTE`, `TIMEOUT`, `YA_EN_LISTA` o `CATALOGO_NO_DISPONIBLE`). | Reciben `lista_actualizada` únicamente con los productos válidos agregados. **No reciben los errores ajenos.** | Recibe `actualizacion` con el ranking actualizado (solo los productos agregados). |
+| **Timeout o caída total del catálogo** | Recibe `resultado_propuesta` con `agregados: []` y cada ID informado en `fallidos` con código `TIMEOUT` o `CATALOGO_NO_DISPONIBLE` (sin trazas internas ni URLs del proveedor). | No reciben ninguna notificación innecesaria ni se altera la lista. | Sin cambios; la conexión SSE sigue activa. |
+| **Dos propuestas simultáneas del mismo ID** | El primero en completar la inserción sincrónica tras el `await` recibe el producto en `agregados`; el segundo recibe `YA_EN_LISTA` en `fallidos`. | Ven el producto una única vez (sin duplicados). | Muestra el producto una única vez. |
 
 ## Por qué WebSocket para participantes, SSE para la pantalla y qué cambiaría con polling
 
