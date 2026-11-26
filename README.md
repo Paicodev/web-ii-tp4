@@ -40,15 +40,16 @@ npm test
 
 > **Nota en Windows PowerShell:** si la política de ejecución bloquea `npm.ps1`, usar `npm.cmd` (por ejemplo, `npm.cmd run dev`).
 
-### Verificación rápida del servidor
+### URLs disponibles (todo en el mismo servidor y puerto)
 
-Con el servidor levantado, abrir en el navegador o consultar:
+Con el servidor levantado en el puerto por defecto (`3000`):
 
-```text
-http://localhost:3000/health
-```
+- **Participante (WebSocket):** `http://localhost:3000/`
+- **Pantalla compartida (SSE):** `http://localhost:3000/pantalla` (también accesible en `/screen`)
+- **Stream SSE crudo:** `http://localhost:3000/eventos`
+- **Estado y configuración activa:** `http://localhost:3000/health`
 
-Devuelve `200 OK` con el estado del servidor y la configuración activa del catálogo.
+Para probar, abrir varias pestañas en `http://localhost:3000/` (con nombres distintos) y una pestaña en `http://localhost:3000/pantalla`.
 
 ---
 

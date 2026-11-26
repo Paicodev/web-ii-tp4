@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Regalo Grupal · Pantalla en Vivo</title>
+    <link rel="stylesheet" href="/estilos.css" />
+  </head>
+  <body>
+    <main class="contenedor">
+      <header class="encabezado">
+        <div>
+          <h1>Regalo Grupal · Ranking en Vivo</h1>
+          <p class="ayuda">Solo lectura · Actualización automática mediante Server-Sent Events (SSE)</p>
+        </div>
+        <div class="pantalla-metricas">
+          <span class="contador-grande">
+            Participantes conectados: <span id="cantidad-participantes">0</span>
+          </span>
+          <span id="estado-sse" class="estado-conexion reconectando">Conectando...</span>
+        </div>
+      </header>
+
+      <section class="tarjeta">
+        <h2>Ranking actual</h2>
+        <div id="ranking" class="lista-productos">
+          <p class="vacio">Esperando propuestas...</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/pantalla.js" defer></script>
+  </body>
+</html>

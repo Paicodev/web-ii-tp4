@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Regalo Grupal · Participante</title>
+    <link rel="stylesheet" href="/estilos.css" />
+  </head>
+  <body>
+    <main class="contenedor">
+      <header class="encabezado">
+        <div>
+          <h1>Regalo Grupal · Participante</h1>
+          <p class="ayuda">
+            <a href="/pantalla" target="_blank" rel="noopener">Abrir pantalla compartida (/pantalla)</a>
+          </p>
+        </div>
+        <span id="estado-ws" class="estado-conexion reconectando">Conectando...</span>
+      </header>
+
+      <div id="banner-error" class="aviso error oculto" role="alert"></div>
+
+      <section id="vista-ingreso" class="tarjeta">
+        <h2>Entrar a la lista</h2>
+        <form id="form-ingreso" class="fila-form">
+          <input
+            id="input-nombre"
+            type="text"
+            maxlength="30"
+            placeholder="Tu nombre (ej. Ana)"
+            autocomplete="off"
+            required
+          />
+          <button id="btn-entrar" type="submit" disabled>Entrar</button>
+        </form>
+        <p class="ayuda">Máximo 30 caracteres. No se permiten nombres vacíos ni repetidos entre conectados.</p>
+      </section>
+
+      <div id="vista-app" class="oculto">
+        <section class="tarjeta">
+          <h2>Participantes conectados (<span id="cantidad-participantes">0</span>)</h2>
+          <div id="lista-participantes" class="participantes-lista"></div>
+        </section>
+
+        <section class="tarjeta">
+          <h2>Proponer productos del catálogo</h2>
+          <form id="form-proponer" class="fila-form">
+            <input
+              id="input-ids"
+              type="text"
+              placeholder="IDs separados por coma o espacio (ej. 1, 2, 15)"
+              autocomplete="off"
+              required
+            />
+            <button id="btn-proponer" type="submit">Proponer</button>
+          </form>
+          <p class="ayuda">Hasta 10 IDs por propuesta (DummyJSON). Mientras se consultan podés seguir votando.</p>
+          <div id="banner-pendiente" class="aviso info oculto" style="margin-top: 10px; margin-bottom: 0;"></div>
+          <div id="banner-resultado" class="aviso oculto" style="margin-top: 10px; margin-bottom: 0;"></div>
+        </section>
+
+        <section class="tarjeta">
+          <h2>Lista de propuestas (ordenada por votos)</h2>
+          <div id="lista-productos" class="lista-productos">
+            <p class="vacio">Todavía no hay productos propuestos.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script src="/participante.js" defer></script>
+  </body>
+</html>
