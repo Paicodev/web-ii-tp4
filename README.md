@@ -176,7 +176,22 @@ Toda consulta al catálogo externo (DummyJSON) se ejecuta mediante `fetch` con `
 
 ## Por qué WebSocket para participantes, SSE para la pantalla y qué cambiaría con polling
 
-> _En construcción — se completará en el Paso 4._
+### Por qué WebSocket para los participantes
+- Un participante **envía acciones con frecuencia** (`unirse`, `proponer`, `votar`, `quitar_voto`, `quitar_producto`) y al mismo tiempo **recibe cambios en vivo** del resto del grupo (`lista_actualizada`, `participantes`, `resultado_propuesta`, `error`).
+- **WebSocket** abre una conexión TCP persistente (iniciada mediante `GET` con `Upgrade: websocket` → `101 Switching Protocols`) con comunicación **bidireccional real** y baja latencia en ambos sentidos.
+- Además, cada participante queda asociado a su `socket` en el servidor, permitiendo enviar errores y resultados parciales solo a quien originó la acción y detectar al instante su salida mediante el evento `close` y el heartbeat `ping`/`pong`.
+- Se utiliza la biblioteca estándar `ws` en el servidor junto con la API `WebSocket` nativa del navegador (sin protocolos propietarios como Socket.IO).
+
+### Por qué Server-Sent Events (SSE) para la pantalla
+- La pantalla compartida **solo escucha y muestra** el ranking y la cantidad de participantes; nunca envía datos al servidor.
+- **SSE** funciona sobre HTTP común (`GET /eventos` con `Content-Type: text/event-stream`), con dirección **unidireccional Servidor → Cliente**, que encaja exactamente con ese rol sin la complejidad de diseñar un protocolo bidireccional ni heartbeat de aplicación.
+- La API `EventSource` del navegador ofrece **reconexión automática nativa** si se corta la red (con `retry` e `id` por evento), y al reconectarse vuelve a recibir inmediatamente el evento `estado` con el ranking al día.
+
+### Qué cambiaría si la pantalla usara polling
+Si la pantalla hiciera *short polling* (por ejemplo un `GET /ranking` cada pocos segundos):
+- **Demora artificial:** los cambios tardarían hasta un intervalo completo en reflejarse en la pantalla en lugar de verse al instante.
+- **Tráfico y carga innecesarios:** enviaría solicitudes HTTP repetidas incluso cuando nadie está votando ni proponiendo nada (mayor overhead de encabezados y conexiones).
+- **A cambio**, no mantendría una conexión HTTP abierta por pantalla, algo que solo tiene sentido cuando las novedades son muy poco frecuentes y una demora de varios segundos resulta aceptable. En un ranking en vivo compartido, SSE entrega actualizaciones inmediatas con mínimo consumo y reconexión automática.
 
 ## Evidencia y pruebas
 
